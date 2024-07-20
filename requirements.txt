@@ -1,0 +1,4 @@
+selenium==3.141.0
+urllib3==1.26.14
+webdriver-manager==3.8.5
+msedge-selenium-tools==3.141.4
