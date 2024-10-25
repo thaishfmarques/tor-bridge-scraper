@@ -18,10 +18,10 @@ The need of scrolling up the page only exists because I wanted a portion of IPS 
 
 ```
 tor_bridge_scraper/
-├── utils.py           # Common functions (http session, IP extraction, Splunk indexing)
-├── tor_bridges.py     # Script for fetching Tor exit nodes from the Tor Project
-├── telegram_bridges.py  # Script for scraping Tor bridges from Telegram
-└── main.py            # Entry point for running both scripts
+├── utils.py               # Common functions (http session, IP extraction, Splunk indexing)
+├── tor_bridges.py         # Script for fetching Tor exit nodes from the Tor Project
+├── telegram_bridges.py    # Script for scraping Tor bridges from Telegram
+└── main.py                # Entry point for running both scripts
 ```
 
 ## Installation
