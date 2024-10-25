@@ -1,5 +1,11 @@
 import time
 import re
+import sys
+import warnings
+import json
+import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -7,10 +13,20 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from msedge.selenium_tools import Edge, EdgeOptions
+from urllib3 import exceptions, disable_warnings
 
-URL = 'https://t.me/s/tor_bridges'
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+disable_warnings(exceptions.InsecureRequestWarning)
 
-def get_browser(option='firefox'):
+URLS = ['https://t.me/s/tor_bridges','https://t.me/s/mosty_tor2']
+SPLUNK_TOKEN = ''
+SPLUNK_URL = ''
+HOST = ''
+SOURCE = 'tor_crawler'
+
+log = Logger().getLogger("TOR BRIDGE CRAWLER")
+
+def get_browser(option='edge'):
     ''' Função para configurar e retornar o navegador desejado '''
     if option == 'chrome':
         chrome_options = webdriver.ChromeOptions()
@@ -62,24 +78,50 @@ def filter_ip_ports(ip_ports):
             filtered.append(ip_port)
     return filtered
 
+def index_to_splunk(data):  
+    ''' Envia resultados para o splunk '''
+    session = requests.Session()
+    retry = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    try:
+        event = {"source": 'TorBridgesCrawler', "host": HOST, "event": data}
+        headers = {"Authorization": "Splunk " + SPLUNK_TOKEN}
+        res = session.post(url=SPLUNK_URL, headers=headers, data=json.dumps(event), verify=False)
+        status = res.status_code
+        if status == 200:
+            pass
+        else:
+            log.error('Event not indexed. status_code: %s', status)
+    except TypeError:
+        log.error('Event not indexed.\nMotive: Token not found. SPLUNK_TOKEN: %s', SPLUNK_TOKEN)
+        return False
+    except exceptions.ConnectionError as conn_err:
+        log.error('Connection Refused\nMotive: %s', conn_err)
+        print(f'\nConnection Refused\nMotive: {conn_err}')
+        return False
+
 def main():
     driver = get_browser()
     try:
-        messages = fetch_messages(driver, URL)
-        all_matches = extract_ip_ports(messages)
-        filtered_matches = filter_ip_ports(all_matches)
-        
-        results = []
-        for match in filtered_matches:
-            result = {
-                'data': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'ip': match
-            }
-            results.append(result)
-        
-        for result in results:
-            print(result)
-        
+        for url in URLS: 
+            messages = fetch_messages(driver, url)
+            all_matches = extract_ip_ports(messages)
+
+            results = []
+            for match in all_matches:
+                result = {
+                    'data': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'misp_value': match.split(':')[0],
+                    'port': match.split(':')[1],
+                    'misp_event_info': 'TOR Exit Nodes',
+                    'url': url # Adicionando a URL de origem
+                }
+                results.append(result)
+            for result in results:
+                print(result)
+                index_to_splunk(result)
     finally:
         driver.quit()
 
