@@ -1,4 +1,11 @@
+certifi==2024.7.4
+charset-normalizer==3.3.2
+idna==3.7
+msedge-selenium-tools==3.141.4
+packaging==24.1
+python-dotenv==1.0.1
+requests==2.32.3
 selenium==3.141.0
+tqdm==4.66.5
 urllib3==1.26.14
 webdriver-manager==3.8.5
-msedge-selenium-tools==3.141.4
